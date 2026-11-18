@@ -4,7 +4,7 @@ public class TodoStore {
  private readonly string path;
  private readonly SemaphoreSlim gate=new(1,1);
  private readonly JsonSerializerOptions options=new(){WriteIndented=true,PropertyNameCaseInsensitive=true};
- public TodoStore(IWebHostEnvironment env){var dir=Path.Combine(env.ContentRootPath,"App_Data");Directory.CreateDirectory(dir);path=Path.Combine(dir,"todos.json");}
+ public TodoStore(IWebHostEnvironment env){var dir=Path.Combine(env.ContentRootPath,"App_Data");Directory.CreateDirectory(dir);path=Path.Combine(dir,"todos.json");if(!File.Exists(path)){var seed=Path.Combine(dir,"todos.seed.json");if(File.Exists(seed))File.Copy(seed,path); }}
  private async Task<List<TodoModel>> Read()=>File.Exists(path)?JsonSerializer.Deserialize<List<TodoModel>>(await File.ReadAllTextAsync(path),options)??new():new();
  private async Task Write(List<TodoModel> todos){var temp=path+"."+Guid.NewGuid()+".tmp";await File.WriteAllTextAsync(temp,JsonSerializer.Serialize(todos,options));File.Move(temp,path,true);}
  private static DateTime? NextMonthDay(DateTime from,List<int> days){for(var m=0;m<25;m++){var month=from.AddMonths(m);foreach(var d in days.Distinct().Order()){if(d<1||d>31||d>DateTime.DaysInMonth(month.Year,month.Month))continue;var candidate=new DateTime(month.Year,month.Month,d,0,0,0,DateTimeKind.Utc);if(candidate>from)return candidate;}}return null;}
