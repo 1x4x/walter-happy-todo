@@ -1,0 +1,49 @@
+@page "/create"
+@page "/edit/{Id:guid}"
+@inject TodoStore Store
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider Authentication
+@using Microsoft.AspNetCore.Components.Authorization
+<PageTitle>@(Id==null?"Create":"Edit") Todo · Happy Todo</PageTitle>
+@if(authorized){
+<section class="editor"><a href="/">← Back to todos</a><h1>@(Id==null?"🌷 Create a Todo":"✏️ Edit Todo")</h1><p>Pick a routine, schedule, and splash of color.</p>
+<EditForm Model="todo" OnValidSubmit="Save" FormName="todo"><DataAnnotationsValidator /><ValidationSummary />
+<label>Quick suggestions</label><input list="todo-suggestions" @bind="suggestion" @bind:after="ApplySuggestion" placeholder="Choose from 260 suggestions…" /><datalist id="todo-suggestions">@foreach(var title in suggestions){<option value="@title"></option>}</datalist>
+<label>Title</label><InputText @bind-Value="todo.Title" /><label>Description</label><InputTextArea @bind-Value="todo.Description" rows="3" />
+<label>Category</label><InputSelect @bind-Value="todo.Category">@foreach(var category in categories){<option value="@category">@category</option>}</InputSelect>
+<label>Repeat schedule</label><InputSelect @bind-Value="todo.Recurrence"><option value="None">Does not repeat</option><option value="Daily">Every day</option><option value="Weekly">Every week</option><option value="Monthly">Every month</option><option value="EveryNDays">Every N days</option><option value="MonthDays">Specific days each month</option></InputSelect>
+@if(todo.Recurrence=="EveryNDays"){<label>Every how many days?</label><InputNumber @bind-Value="todo.IntervalDays" min="1" max="365" />}
+@if(todo.Recurrence=="MonthDays"){<label>Days of month (comma separated: 1, 5, 8, 22)</label><input @bind="monthDaysText" placeholder="26" />@if(monthError){<p class="validation">Enter one or more days from 1 to 31.</p>}}
+<label>4px border color</label><div class="palette">@foreach(var color in TodoPalette.Colors){<label class="swatch" title="@color"><input type="radio" name="border" checked="@(todo.BorderColor==color)" @onchange="()=>todo.BorderColor=color" /><span style="background:@color"></span></label>}</div>
+<label class="check"><InputCheckbox @bind-Value="todo.IsImportant" /> Important ⭐</label><label class="check"><InputCheckbox @bind-Value="todo.IsFinished" /> Finished ✓</label>
+<button type="submit" class="btn">💜 Save Todo</button></EditForm></section>
+}else{<section class="editor"><h1>Admin access required</h1><a href="/">Return home</a></section>}
+@code {
+ [Parameter]public Guid? Id{get;set;}
+ private TodoModel todo=new();
+ private string monthDaysText="";
+ private string suggestion="";
+ private bool authorized;
+ private bool monthError;
+ private List<string> suggestions=new();
+ private static readonly string[] categories={"General","Hygiene","Health","Home","Finance","Work","Social","Learning","Fitness","Other"};
+ protected override async Task OnInitializedAsync(){
+  authorized=(await Authentication.GetAuthenticationStateAsync()).User.Identity?.IsAuthenticated==true;
+  if(!authorized)return;
+  if(Id.HasValue){todo=await Store.Find(Id.Value)??new TodoModel();monthDaysText=string.Join(", ",todo.MonthDays);}
+  suggestions=await SuggestionCatalog.Load();
+ }
+ private void ApplySuggestion(){if(!suggestions.Contains(suggestion))return;todo.Title=suggestion;if(suggestion.Contains("Bill",StringComparison.OrdinalIgnoreCase)||suggestion.Contains("Rent",StringComparison.OrdinalIgnoreCase))todo.Category="Finance";else if(suggestion.Contains("teeth",StringComparison.OrdinalIgnoreCase)||suggestion.Contains("hair",StringComparison.OrdinalIgnoreCase)||suggestion.Contains("nail",StringComparison.OrdinalIgnoreCase))todo.Category="Hygiene";}
+ private async Task Save(){
+  if(!authorized)return;
+  var days=monthDaysText.Split(',',StringSplitOptions.RemoveEmptyEntries|StringSplitOptions.TrimEntries).Select(s=>int.TryParse(s,out var day)?day:0).Where(d=>d>=1&&d<=31).Distinct().Order().ToList();
+  monthError=todo.Recurrence=="MonthDays"&&days.Count==0;
+  if(monthError)return;
+  todo.MonthDays=days;
+  if(!TodoPalette.Colors.Contains(todo.BorderColor,StringComparer.OrdinalIgnoreCase))todo.BorderColor="#444444";
+  var old=await Store.Find(todo.Id);
+  if(old!=null){todo.CreatedAt=old.CreatedAt;if(old.Recurrence!=todo.Recurrence||old.IntervalDays!=todo.IntervalDays||!old.MonthDays.SequenceEqual(days))todo.NextDueAt=null;else todo.NextDueAt=old.NextDueAt;}
+  todo.CompletedAt=todo.IsFinished?(old?.CompletedAt??DateTime.UtcNow):null;
+  await Store.Save(todo);Nav.NavigateTo("/");
+ }
+}
