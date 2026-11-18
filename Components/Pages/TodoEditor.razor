@@ -1,6 +1,7 @@
 @page "/create"
 @page "/edit/{Id:guid}"
 @inject TodoStore Store
+@inject IWebHostEnvironment Environment
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider Authentication
 @using Microsoft.AspNetCore.Components.Authorization
@@ -31,7 +32,7 @@
   authorized=(await Authentication.GetAuthenticationStateAsync()).User.Identity?.IsAuthenticated==true;
   if(!authorized)return;
   if(Id.HasValue){todo=await Store.Find(Id.Value)??new TodoModel();monthDaysText=string.Join(", ",todo.MonthDays);}
-  suggestions=await SuggestionCatalog.Load();
+  suggestions=await SuggestionCatalog.Load(Environment.ContentRootPath);
  }
  private void ApplySuggestion(){if(!suggestions.Contains(suggestion))return;todo.Title=suggestion;if(suggestion.Contains("Bill",StringComparison.OrdinalIgnoreCase)||suggestion.Contains("Rent",StringComparison.OrdinalIgnoreCase))todo.Category="Finance";else if(suggestion.Contains("teeth",StringComparison.OrdinalIgnoreCase)||suggestion.Contains("hair",StringComparison.OrdinalIgnoreCase)||suggestion.Contains("nail",StringComparison.OrdinalIgnoreCase))todo.Category="Hygiene";}
  private async Task Save(){
