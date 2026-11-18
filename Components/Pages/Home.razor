@@ -1,0 +1,18 @@
+@page "/"
+@inject TodoStore Store
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider Authentication
+@using Microsoft.AspNetCore.Components.Authorization
+<PageTitle>Happy Todo</PageTitle>
+<section class="hero"><span class="eyebrow">✨ YOUR HAPPY SPACE</span><h1>Make today a <span>happy day.</span></h1><p>Little tasks. Big smiles. Your routines, beautifully organized.</p><div class="stats"><span>📋 @todos.Count tasks</span><span>✨ @todos.Count(t=>t.IsFinished) finished</span><span>🌷 @todos.Count(t=>!t.IsFinished) to go</span></div>@if(isAdmin){<a class="btn" href="/create">＋ Add a Todo</a>}else{<p class="hint">Read-only view. Use your private admin link to manage todos.</p>}</section>
+<section class="tasks"><div class="sectionhead"><h2>🌸 My Todos</h2><span>@todos.Count items</span></div>
+@if(todos.Count==0){<div class="empty">🐈 No todos yet.</div>}
+@foreach(var t in todos){<article @key="t.Id" class="todo @(t.IsFinished?"finished":"")" style="border-left:4px solid @t.BorderColor"><div class="todo-top"><div><small>@t.Category @(t.IsImportant?" · ⭐ Important":"")</small><h3>@t.Title</h3>@if(!string.IsNullOrWhiteSpace(t.Description)){<p>@t.Description</p>}<div class="meta"><span>🔁 @t.Recurrence</span>@if(t.Recurrence=="MonthDays"){<span>📅 @string.Join(", ",t.MonthDays)</span>}@if(t.NextDueAt.HasValue){<span>⏰ @t.NextDueAt.Value.ToString("yyyy-MM-dd")</span>}</div></div><span class="status">@(t.IsFinished?"✓ Finished":"○ To do")</span></div>@if(isAdmin){<div class="actions"><button @onclick="()=>Toggle(t.Id)">@(t.IsFinished?"↶ Mark unfinished":"✓ Mark finished")</button><a href="@($"/edit/{t.Id}")">✎ Edit</a><button class="danger" @onclick="()=>Delete(t.Id)">🗑 Delete</button></div>}</article>}</section>
+@code {
+ private List<TodoModel> todos=new();
+ private bool isAdmin;
+ protected override async Task OnInitializedAsync(){isAdmin=(await Authentication.GetAuthenticationStateAsync()).User.Identity?.IsAuthenticated==true;await Reload();}
+ private async Task Reload()=>todos=await Store.All();
+ private async Task Toggle(Guid id){if(!isAdmin)return;await Store.Toggle(id);await Reload();}
+ private async Task Delete(Guid id){if(!isAdmin)return;await Store.Delete(id);await Reload();}
+}
