@@ -2,7 +2,7 @@
 
 A dark-mode ASP.NET Core MVC task manager with pink and purple accents, recurring schedules, JSON storage, and a smiling cat.
 
-![Happy Todo logo](wwwroot/images/happy-todo-logo.svg)
+![Happy Todo logo](wwwroot/images/logo1.png)
 
 ## ✨ Features
 
