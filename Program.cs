@@ -1,0 +1,12 @@
+using HappyTodo;
+using Microsoft.AspNetCore.Authentication.Cookies;
+var builder=WebApplication.CreateBuilder(args);
+builder.Services.AddControllersWithViews();
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(o=>{o.LoginPath="/";o.ExpireTimeSpan=TimeSpan.FromDays(365);o.SlidingExpiration=true;o.Cookie.HttpOnly=true;o.Cookie.SameSite=SameSiteMode.Lax;o.Cookie.SecurePolicy=CookieSecurePolicy.SameAsRequest;});
+builder.Services.AddAuthorization();
+builder.Services.AddSingleton<TodoStore>();
+var app=builder.Build();
+if(!app.Environment.IsDevelopment())app.UseHsts();
+app.UseHttpsRedirection();app.UseStaticFiles();app.UseRouting();app.UseAuthentication();app.UseAuthorization();
+app.MapControllerRoute(name:"default",pattern:"{controller=Todo}/{action=Index}/{id?}");
+app.Run();
